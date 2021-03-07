@@ -1,0 +1,26 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"python.formatting.blackPath": "${workspaceFolder}/bin/black",
+		"python.formatting.provider": "black",
+		"python.linting.mypyPath": "${workspaceFolder}/bin/mypy",
+		"python.linting.flake8Path": "${workspaceFolder}/bin/flake8"
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Python: Current File",
+				"type": "python",
+				"request": "launch",
+				"program": "${file}",
+				"console": "integratedTerminal",
+				"python": "${workspaceFolder}/bin/python"
+			}
+		]
+	}
+}
