@@ -1,3 +1,4 @@
+from app.valid_stock_code import write_json
 import json
 from datetime import datetime, timedelta, timezone
 from io import StringIO
@@ -15,11 +16,6 @@ import pandas
 from matplotlib import dates as mdates
 
 
-def get_valid_stock_code():
-    with open("codes.txt") as f:
-        return f.readlines()
-
-
 URL = "https://query1.finance.yahoo.com/v7/finance/chart/{stock_code}?range={range}&interval={interval}&indicators=quote&includeTimestamps=true"
 
 
@@ -33,89 +29,23 @@ def get_stockinfo(stock_code):
 
 
 def parse_json_to_dataframe(json_data) -> DataFrame:
-    df = DataFrame()
-    df["timestamp"] = json_data["chart"]["result"][0]["timestamp"]
-    df["open"] = json_data["chart"]["result"][0]["indicators"]["quote"][0]["open"]
-    df["low"] = json_data["chart"]["result"][0]["indicators"]["quote"][0]["low"]
-    df["high"] = json_data["chart"]["result"][0]["indicators"]["quote"][0]["high"]
-    df["close"] = json_data["chart"]["result"][0]["indicators"]["quote"][0]["close"]
-    df["volume"] = json_data["chart"]["result"][0]["indicators"]["quote"][0]["volume"]
+    try:
+        d = json_data["chart"]["result"][0]
+        df = DataFrame()
+        df["timestamp"] = d["timestamp"]
+        df["open"] = d["indicators"]["quote"][0]["open"]
+        df["low"] = d["indicators"]["quote"][0]["low"]
+        df["high"] = d["indicators"]["quote"][0]["high"]
+        df["close"] = d["indicators"]["quote"][0]["close"]
+        df["volume"] = d["indicators"]["quote"][0]["volume"]
+    except TypeError as e:
+        raise RuntimeError("Failed to parse json") from e
     return df
 
 
-def read_valid_codes() -> List[str]:
-    with open("valid_stock_code.txt") as f:
-        return f.readlines()
-
-
-def calc_short_term_SMA(df: DataFrame) -> Series:
-    return talib.SMA(df["close"], 5)
-
-
-def calc_long_term_SMA(df: DataFrame) -> Series:
-    return talib.SMA(df["close"], 25)
-
-
-def is_down(sma):
-    # 下降傾向かみる
-    pass
-
-
-def calc_gradients(df: DataFrame) -> List:
-    # 傾きを調べる
-    d = df.diff()
-    print(f"calc_gradient:{d.values[-1]}")
-    try:
-        return d.values
-    except ValueError as e:
-        raise e
-
-
-def get_cross_day(short: Series, long: Series) -> Optional[int]:
-    # 交わる日があれば何日前にあったか返す
-    diff = short - long
-    for i in range(1, len(long.values) - 1):
-        if diff.values[-i] >= 0 and diff.values[-i - 1] < 0:
-            return i
-    return None
-
-
-def get_time_of_purchase_codes(codes):
-    # 買い時の銘柄コードを返す
-    time_of_purchase_codes = []
-    for code in codes:
-        res = get_stockinfo(code)
-        if res is None:
-            continue
-        data = parse_json_to_dataframe(res)
-        short_sma = calc_short_term_SMA(data)
-        long_sma = calc_long_term_SMA(data)
-        short_gradients = calc_gradients(short_sma)
-        print(short_gradients)
-        long_gradients = calc_gradients(long_sma)
-        print(long_gradients)
-        # 短期的には上昇していないのならばパス
-        if short_gradients[-1] <= 0:
-            print("pass 1")
-            continue
-        # 長期的にも一定期間(5日間)安定していなければパス
-        if len([x for x in long_gradients[-5:] if x > -2 and x < 3]) < 5:
-            print("pass 2")
-            print([x for x in long_gradients[-5:] if x > -2 and x < 3])
-            continue
-        if short_gradients[-1] <= long_gradients[-1]:
-            print("pass 3")
-            continue
-        passed_days = get_cross_day(short_sma, long_sma)
-        if passed_days is None:
-            print("pass 4")
-            continue
-        # 2日以上前だったらパス。遅い。
-        if passed_days > 1:
-            print("pass 5")
-            continue
-        time_of_purchase_codes.append(code)
-    return time_of_purchase_codes
+def read_valid_codes(prefix: str) -> List[str]:
+    with open("/out/" + prefix + "codes.txt") as f:
+        return [x.strip() for x in f.readlines()]
 
 
 def plot_price(file_name: str, df: DataFrame):
@@ -128,17 +58,11 @@ def plot_price(file_name: str, df: DataFrame):
 
 
 if __name__ == "__main__":
-    # stock_codes = get_valid_stock_code()
-    # codes = get_time_of_purchase_codes(stock_codes)
-    stock_codes = ["1301.T"]
+    prefix = datetime.strftime(datetime.now(), "%Y%m%d")
+    stock_codes = read_valid_codes(prefix)
     for code in stock_codes:
+        sleep(8)
         stock_info = get_stockinfo(code)
-        data = parse_json_to_dataframe(stock_info)
-        data["timestamp"] = pandas.to_datetime(data["timestamp"], unit="s")
-        data["5sma"] = calc_short_term_SMA(data)
-        data["25sma"] = calc_long_term_SMA(data)
-        data["volume"] = None
-        plot_price(code, data)
-
-    codes = get_time_of_purchase_codes(["1301.T"])
-    print(codes)
+        if stock_info is None:
+            continue
+        write_json(code, prefix, stock_info)
