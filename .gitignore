@@ -4,8 +4,4 @@
 /include
 /lib
 /log
-/valid_stock_codes.txt
-/valid_stock_codes_1-3000.txt
-/valid_stock_codes_3000_6000.txt
-/valid_stock_codes_6000_7000.txt
-/valid_stock_codes_7000_10000.txt
+/out
