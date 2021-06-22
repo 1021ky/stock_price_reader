@@ -15,6 +15,7 @@ from matplotlib import pyplot
 from pandas import DataFrame
 import pandas
 from matplotlib import dates as mdates
+from time import sleep
 
 
 def get_valid_stock_code():
@@ -27,7 +28,7 @@ URL = "https://query1.finance.yahoo.com/v7/finance/chart/{stock_code}?range={ran
 # APIにリクエストを投げる間隔（sec）
 REQUEST_INTARVAL = 2
 # APIに繋がらない
-REQUEST_TIMEOUT = 10.0
+REQUEST_TIMEOUT = 5.0
 # APIにリクエストしてタイムアウトしたときのリトライ数
 RETRY_COUNT = 3
 
@@ -49,17 +50,19 @@ def get_stockinfo(stock_code: str, selected_range: int) -> Optional[Dict]:
             res = requests.get(param, timeout=REQUEST_TIMEOUT)
             text = json.load(StringIO(res.text))
         except Timeout:
+            sleep(REQUEST_INTARVAL)
+            continue
+        except Exception:
             continue
         break
     else:
         print(f"timeout occured. code:{stock_code}")
         return None
-
     if text["chart"]["error"] is not None:
         print(stock_code + ": ", end="")
         print(text["chart"]["error"])
         return None
-
+    sleep(REQUEST_INTARVAL)
     return text
 
 
@@ -157,6 +160,7 @@ def get_time_of_purchase_codes(codes):
         # 長期的にも一定期間(5日間)安定していなければパス
         if len([x for x in long_gradients[-5:] if x > -2 and x < 3]) < 5:
             continue
+        # ゴールデンクロスがなければパス
         if short_gradients[-1] <= long_gradients[-1]:
             continue
         passed_days = get_cross_day(short_sma, long_sma)
@@ -170,6 +174,7 @@ def get_time_of_purchase_codes(codes):
 
 
 def is_time_of_purchase(data) -> bool:
+    latest_close = data["close"][0]
     short_sma = calc_daily_short_term_SMA(data)
     long_sma = calc_daily_long_term_SMA(data)
     short_gradients = calc_gradients(short_sma)
@@ -184,6 +189,13 @@ def is_time_of_purchase(data) -> bool:
         return False
     if short_gradients[-1] <= long_gradients[-1]:
         return False
+    # +3％以上の乖離率ならばパス
+    rate = calc_divergence_rate(short_sma.values[-1], latest_close)
+    print(
+        f"rate:{rate} base(short_sma):{short_sma.values[-1]} compared(latest_close):{latest_close}"
+    )
+    # if rate >= 3:
+    #     return False
     passed_days = get_cross_day(short_sma, long_sma)
     if passed_days is None:
         return False
@@ -191,6 +203,10 @@ def is_time_of_purchase(data) -> bool:
     if passed_days > 1:
         return False
     return True
+
+
+def calc_divergence_rate(base: float, compared: float) -> float:
+    return (compared - base) * 100 / base
 
 
 def get_time_to_sell_codes(codes: List) -> List[str]:
@@ -226,4 +242,3 @@ if __name__ == "__main__":
         data["25sma"] = calc_daily_long_term_SMA(data)
         data["volume"] = None
         plot_price(code, data)
-        sleep(10)
