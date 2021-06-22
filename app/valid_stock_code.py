@@ -49,50 +49,16 @@ class IndustryCodeRange:
     JOHOTSUSHIN = range(9400, 9500)
     DENKIGASU = range(9500, 9600)
     SABISU = range(9600, 10000)
-    ALL_RANGES = (
-        NORIN_SUISAN,
-        KOGYO,
-        KENSETSU,
-        SHOKUHIN,
-        SENISEIHIN,
-        PARUPU_KAMI,
-        KAGAKU_IYAKUHIN,
-        SEKIYU_SEKITAN,
-        GOMU,
-        YOGYO,
-        TETSUUKO,
-        HITESSUKKINZOKU,
-        KINZOKUSEIHIN,
-        KIKAI,
-        DENKI,
-        YUSOYOKIKAI,
-        SONOTASEIHIN,
-        SHOGYO,
-        GINKO_NONBANKU,
-        SHOKEN_SHOKENSAKIMONO,
-        HOKEN,
-        FUDOSAN,
-        RIKUUN,
-        KAIUN,
-        KUUN,
-        SOKO_UNYU,
-        JOHOTSUSHIN,
-        DENKIGASU,
-        SABISU,
-        UNKNOWN_1,
-        UNKNOWN_2,
-        UNKNOWN_3,
-        UNKNOWN_4,
-    )
+    ALL_RANGES = range(1300, 10000)
 
 
 # データ取得元
 URL = "https://query1.finance.yahoo.com/v7/finance/chart/{stock_code}?range={selected_range}&interval={interval}&indicators=quote&includeTimestamps=true"
 
 # APIにリクエストを投げる間隔（sec）
-REQUEST_INTARVAL = 3
+REQUEST_INTARVAL = 2
 # APIに繋がらない
-REQUEST_TIMEOUT = 10.0
+REQUEST_TIMEOUT = 5.0
 # APIにリクエストしてタイムアウトしたときのリトライ数
 RETRY_COUNT = 3
 
@@ -155,5 +121,4 @@ def get_valid_stock_codes(filename_prefix: str, selected_range: range):
 
 if __name__ == "__main__":
     prefix = datetime.strftime(datetime.now(), "%Y%m%d")
-    for r in IndustryCodeRange.ALL_RANGES:
-        get_valid_stock_codes(prefix, r)
+    get_valid_stock_codes(prefix, IndustryCodeRange.ALL_RANGES)
