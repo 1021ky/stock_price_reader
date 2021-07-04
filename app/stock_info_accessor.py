@@ -1,34 +1,87 @@
-from app.valid_stock_code import write_json
 import json
-from datetime import datetime, timedelta, timezone
+import logging
 from io import StringIO
-from time import CLOCK_THREAD_CPUTIME_ID, sleep
-from typing import List, Optional, Tuple
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
-from pandas.core.series import Series
+from time import sleep
+from typing import Dict, Optional
 
 import requests
-import talib
-from matplotlib import pyplot
 from pandas import DataFrame
-import pandas
-from matplotlib import dates as mdates
+from requests.exceptions import Timeout
+
+# APIにリクエストを投げる間隔（sec）
+REQUEST_INTERVAL = 2
+# APIに繋がらないときのタイムアウト
+REQUEST_TIMEOUT = 5.0
+# APIにリクエストしてタイムアウトしたときのリトライ数
+RETRY_COUNT = 3
 
 
-URL = "https://query1.finance.yahoo.com/v7/finance/chart/{stock_code}?range={range}&interval={interval}&indicators=quote&includeTimestamps=true"
+class YahooFinanceAPIConfigure:
+    """YahooFinanceAPIへの設定"""
+
+    _URL = "https://query1.finance.yahoo.com/v7/finance/chart/{stock_code}?range={range}&interval={interval}&indicators=quote&includeTimestamps=true"
+
+    _RANGE = {
+        "1day": "1d",
+        "5days": "5d",
+        "1month": "1mo",
+        "3months": "3mo",
+        "6months": "6mo",
+        "1year": "1y",
+        "2years": "2y",
+        "5years": "5y",
+        "10years": "10y",
+        "ytd": "ytd",
+        "max": "max",
+    }
+
+    _INTERVAL = {"1day": "1d"}
+
+    def __init__(self, date_range: str, interval: str) -> None:
+        self._date_range = self._RANGE[date_range]
+        self._interval = self._INTERVAL[interval]
+
+    def generate_url(self, stock_code):
+        return self._URL.format(
+            stock_code=stock_code, range=self._date_range, interval=self._interval
+        )
 
 
-def get_stockinfo(stock_code):
-    res = requests.get(URL.format(stock_code=stock_code, range="30d", interval="1d"))
-    text = json.load(StringIO(res.text))
-    if text["chart"]["error"] is not None:
-        print(text["chart"]["error"])
+_yahoo_finance_api_configure = YahooFinanceAPIConfigure("6months", "1day")
+
+
+def get_stockinfo(stock_code: str) -> Optional[DataFrame]:
+    """APIから情報取得する"""
+    url = _yahoo_finance_api_configure.generate_url(stock_code)
+    logging.debug("url:%s", url)
+    text = {}
+    for _ in range(RETRY_COUNT):
+        try:
+            res = requests.get(url, timeout=REQUEST_TIMEOUT)
+            text = json.load(StringIO(res.text))
+        except Timeout:
+            sleep(REQUEST_INTERVAL)
+            continue
+        except Exception:
+            continue
+        break
+    else:
+        logging.warn("timeout occurred. code is %s", stock_code)
         return None
-    return text
+    if text["chart"]["error"] is not None:
+        logging.warn("api return error. code is %s", stock_code)
+        logging.warn("api error %s", text["chart"]["error"])
+        return None
+    sleep(REQUEST_INTERVAL)
+    try:
+        return _parse_json_to_dataframe(text)
+    except TypeError as e:
+        logging.warn("unexpected format data returned.")
+        logging.warn(e)
+        return None
 
 
-def parse_json_to_dataframe(json_data) -> DataFrame:
+def _parse_json_to_dataframe(json_data: Dict) -> DataFrame:
     try:
         d = json_data["chart"]["result"][0]
         df = DataFrame()
@@ -39,30 +92,6 @@ def parse_json_to_dataframe(json_data) -> DataFrame:
         df["close"] = d["indicators"]["quote"][0]["close"]
         df["volume"] = d["indicators"]["quote"][0]["volume"]
     except TypeError as e:
-        raise RuntimeError("Failed to parse json") from e
+        logging.warn("failed to parse json")
+        raise e
     return df
-
-
-def read_valid_codes(prefix: str) -> List[str]:
-    with open("/out/" + prefix + "codes.txt") as f:
-        return [x.strip() for x in f.readlines()]
-
-
-def plot_price(file_name: str, df: DataFrame):
-    fig, axes = pyplot.subplots()
-    axes.xaxis.set_minor_locator(mdates.DayLocator(interval=1))
-    axes.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
-    df.plot(ax=axes, x="timestamp", sharex=True)
-    pyplot.savefig(f"img/{file_name}.png")
-    pyplot.close("all")
-
-
-if __name__ == "__main__":
-    prefix = datetime.strftime(datetime.now(), "%Y%m%d")
-    stock_codes = read_valid_codes(prefix)
-    for code in stock_codes:
-        sleep(8)
-        stock_info = get_stockinfo(code)
-        if stock_info is None:
-            continue
-        write_json(code, prefix, stock_info)
