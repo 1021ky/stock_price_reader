@@ -1,8 +1,11 @@
 /.mypy_cache
 /.vscode
-/codes.txt
+/*codes.txt
 /include
 /lib
 /log
 /out
 /bin
+
+*.pyc
+result*.txt
