@@ -71,7 +71,7 @@ class YahooFinanceAPIClient:
                 res = requests.get(url, timeout=self._REQUEST_TIMEOUT, headers=headers)
                 sleep(self._REQUEST_INTERVAL)
                 if res.status_code == requests.codes.ok:
-                    jsondata = res.json()
+                    jsondata = json.loads(res.json())
                     return jsondata
             except Timeout as e:
                 logging.debug(e)
