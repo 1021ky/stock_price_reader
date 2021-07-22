@@ -2,6 +2,10 @@
 from pdfminer.high_level import extract_text
 from re import compile
 
+"""上場している銘柄一覧を抽出する。
+抽出元は日本取引所グループJPX(https://www.jpx.co.jp/listing/co/01.html)で公開されている上場株式数のpdfファイル
+"""
+
 INPUT_DIRECTORY = "data/"
 OUTPUT_DIRECTORY = "data/"
 OUTPUT_FILE = "codes.txt"
