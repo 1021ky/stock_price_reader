@@ -13,11 +13,14 @@ TA-Lib = "^0.4.20"
 matplotlib = "^3.4.2"
 numpy = "^1.20.0"
 cvxpy = "^1.1.13"
+"pdfminer.six" = "^20201018"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"
 black = "^21.6b0"
 isort = "^5.9.2"
+mypy = "^0.910"
+flake8 = "^3.9.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
