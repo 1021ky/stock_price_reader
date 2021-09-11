@@ -1,0 +1,111 @@
+@startuml
+
+title simulator class diagram
+
+package simulator {
+
+    package application{
+        class Service
+    }
+
+    package domain {
+        ' definition
+        class StockTradeSimulatior {
+            - trader : Trader
+            - dataframe : DataFrame
+            + StockTradeSimulatior(filename)
+            - readData(filename) : DataFrame
+            + setup(param : TradeParam)
+            + run()
+            + showResult()
+        }
+
+        class Trader {
+            - param : TradeParam
+            - portfolio : Portfolio
+            - strategy : TradeStrategy
+            + trade(data: DataFrame)
+            - record(trade : Trade)
+            + getPortfolio() : Portfolio
+        }
+
+        class Portfolio {
+            - tradelist : List[Trade]
+            + result() : String
+        }
+
+        class TradeStrategy {
+            tradefunc(deposit : int, data: DataFrame): Trade
+        }
+
+        package model {
+            class TradeParam{
+                - tradeRange : Range[datetime]
+                - deposit : int
+                - minimumStockPrice : int
+                - minimumStockVolume : int
+            }
+
+            class StockPrice {
+                open : int
+                close : int
+                high : int
+                low : int
+                volume : int
+            }
+
+            class BrandInfo {
+                code : str
+                unit : int
+            }
+
+            class BrandPrice {
+                brand : BrandInfo
+                price : StockPrice
+            }
+
+            class Order {
+                - datetime : Datetime
+                - brandInfo : BrandInfo
+                - brandPrice : BrandPrice
+                - orderNumber : int
+            }
+
+            class BuyOrder
+            class SellOrder
+
+            class Trade{
+                - balance : int
+                - order : Order
+            }
+        }
+
+        ' relation
+
+        Order <|-- BuyOrder
+        Order <|-- SellOrder
+        Trade *-- Order
+        BrandPrice --* Order
+        BrandPrice *-- StockPrice
+        BrandPrice *-- BrandInfo
+
+        StockTradeSimulatior *-- Trader
+        Trader *-- TradeStrategy
+        Trader *-- Portfolio
+        Trader -- Trade
+        Portfolio o-- Trade
+        StockTradeSimulatior -- TradeParam
+        Trader -- TradeParam
+    }
+
+    package infrastructure {
+        class StockInfoAccessor
+    }
+
+    StockTradeSimulatior -> StockInfoAccessor
+    Service -> StockTradeSimulatior
+
+}
+
+
+@enduml
