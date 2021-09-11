@@ -78,6 +78,7 @@ class TestGetStockinfo(unittest.TestCase):
         self.assertEqual(result_time.year, 2021)
         self.assertEqual(result_time.month, 7)
         self.assertEqual(result_time.day, 14)
+        self.assertEqual(result["code"].values[-1], "valid_code")
 
     @mock.patch("requests.get", side_effect=mocked_requests_get)
     def test_get_stockinfo_timeout(self, _):
