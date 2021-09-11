@@ -48,8 +48,8 @@ class YahooFinanceAPIClient:
     # APIにリクエストしてタイムアウトしたときのリトライ数
     _RETRY_COUNT = 3
 
-    def __init__(self) -> None:
-        self._configure = YahooFinanceAPIConfigure("6months", "1day")
+    def __init__(self, range: str = "6months") -> None:
+        self._configure = YahooFinanceAPIConfigure(range, "1day")
 
     def get_stockinfo(self, stock_code: str) -> Optional[DataFrame]:
         """APIから銘柄情報を取得する"""
@@ -59,6 +59,8 @@ class YahooFinanceAPIClient:
         logging.debug("response:%s", response)
         parsed = self._parse_response(response)
         logging.debug("parsed response:%s", parsed)
+        if parsed is not None:
+            parsed["code"] = stock_code
         return parsed
 
     def _request(self, url: str) -> Optional[Dict]:
@@ -71,7 +73,7 @@ class YahooFinanceAPIClient:
                 res = requests.get(url, timeout=self._REQUEST_TIMEOUT, headers=headers)
                 sleep(self._REQUEST_INTERVAL)
                 if res.status_code == requests.codes.ok:
-                    jsondata = json.loads(res.json())
+                    jsondata = res.json()
                     return jsondata
             except Timeout as e:
                 logging.debug(e)
@@ -98,9 +100,9 @@ class YahooFinanceAPIClient:
             return None
 
     def _parse_json_to_dataframe(self, json_data: Dict) -> DataFrame:
+        df = DataFrame()
         try:
             d = json_data["chart"]["result"][0]
-            df = DataFrame()
             df["timestamp"] = d["timestamp"]
             df["open"] = d["indicators"]["quote"][0]["open"]
             df["low"] = d["indicators"]["quote"][0]["low"]
@@ -108,6 +110,8 @@ class YahooFinanceAPIClient:
             df["close"] = d["indicators"]["quote"][0]["close"]
             df["volume"] = d["indicators"]["quote"][0]["volume"]
         except TypeError as e:
-            logging.warn("failed to parse json")
+            logging.warn("failed to parse json", e)
             raise e
+        except KeyError as e:
+            logging.warn("failed to parse json", e)
         return df
