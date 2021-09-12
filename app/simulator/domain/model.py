@@ -71,3 +71,11 @@ class Trade:
     @property
     def rest_balance(self) -> int:
         return self.balance - self.order.total_amount - self.fee
+
+
+@dataclass(init=True, repr=True, frozon=True)
+class TradeParam:
+    trade_range: range
+    deposit: int
+    minimumStockPrice: int
+    minimumStockVolume: int
