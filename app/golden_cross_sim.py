@@ -81,11 +81,11 @@ def trade_func(date: date, portfolio: Portfolio):
     order_list = []
     # Dead crossが発生していて持っている株があれば売る
     if date in dead_dict.keys():
-        for code in dead_dict[date]:
-            if code in portfolio.stocks:
-                order_list.append(
-                    SellMarketOrder(code, portfolio.stocks[code].current_count)
-                )
+        order_list = [
+            SellMarketOrder(code, portfolio.stocks[code].current_count)
+            for code in dead_dict[date]
+            if code in portfolio.stocks
+        ]
     # 保有していない株でgolden crossが発生していたら買う
     if date in golden_dict.keys():
         for code in golden_dict[date]:
